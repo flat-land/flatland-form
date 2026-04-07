@@ -522,11 +522,21 @@ select.finput {
         <input class="finput" id="promo-search" placeholder="名前・Discord名で検索…" oninput="renderPromo()">
       </div>
       <!-- ステータスフィルター -->
-      <div class="chips" id="promo-chips" style="margin-bottom:14px">
+      <div class="chips" id="promo-chips" style="margin-bottom:6px">
         <button class="chip on" onclick="filterPromo('all',this)">すべて</button>
         <button class="chip" onclick="filterPromo('ok',this)">✦ 昇格可能</button>
         <button class="chip" onclick="filterPromo('go',this)">→ 継続中</button>
         <button class="chip" onclick="filterPromo('hold',this)">⏸ 要強化</button>
+      </div>
+      <!-- ランクフィルター -->
+      <div class="chips" id="promo-rank-chips" style="margin-bottom:14px">
+        <button class="chip on" onclick="filterPromoRank('all',this)">全ランク</button>
+        <button class="chip" onclick="filterPromoRank('bronze',this)">🥉 ブロンズ</button>
+        <button class="chip" onclick="filterPromoRank('silver',this)">🥈 シルバー</button>
+        <button class="chip" onclick="filterPromoRank('gold',this)">🥇 ゴールド</button>
+        <button class="chip" onclick="filterPromoRank('plat',this)">💠 プラチナ</button>
+        <button class="chip" onclick="filterPromoRank('diamond',this)">💎 ダイヤモンド</button>
+        <button class="chip" onclick="filterPromoRank('master',this)">👑 マスター</button>
       </div>
       <div id="promo-list"></div>
     </div>
@@ -751,7 +761,7 @@ async function gasPost(data) {
 }
 
 
-let mFilter='all', gFilter='all', folderFilter='all', aFilter='all', promoFilter='all';
+let mFilter='all', gFilter='all', folderFilter='all', aFilter='all', promoFilter='all', promoRankFilter='all';
 let evalScores={skill:1,growth:1,contrib:1,contin:1}, evalTargetId=null;
 const PAGE_TITLES = {dashboard:'ホーム',members:'メンバー',gallery:'作品',promotion:'昇格審査',applications:'申請'};
 
@@ -1060,6 +1070,9 @@ function renderPromo(){
   let html = '';
 
   RANK_ORDER.forEach(rank => {
+    // ランクフィルター
+    if(promoRankFilter !== 'all' && promoRankFilter !== rank) return;
+
     const R = RANKS[rank];
     const nr = nextRank(rank);
     const NR = nr ? RANKS[nr] : null;
@@ -1195,6 +1208,13 @@ function renderApps(){
 function filterPromo(f,el){
   promoFilter=f;
   document.querySelectorAll('#promo-chips .chip').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  renderPromo();
+}
+
+function filterPromoRank(f,el){
+  promoRankFilter=f;
+  document.querySelectorAll('#promo-rank-chips .chip').forEach(b=>b.classList.remove('on'));
   el.classList.add('on');
   renderPromo();
 }
