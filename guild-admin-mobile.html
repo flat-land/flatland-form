@@ -877,6 +877,24 @@ const FOLDER_NORM = {
 };
 function normalizeFolder(f){ return FOLDER_NORM[f] || 'ギャラリー'; }
 
+// ── 検索正規化（ひらがな↔カタカナ・全角↔半角・小文字統一）──────
+function normalizeQ(str) {
+  if(!str) return '';
+  return str
+    .toLowerCase()
+    // 全角英数→半角
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
+    // カタカナ→ひらがな
+    .replace(/[\u30A1-\u30F6]/g, s => String.fromCharCode(s.charCodeAt(0) - 0x60))
+    // 長音符はそのまま許容
+    .trim();
+}
+function matchQ(q, ...targets) {
+  const nq = normalizeQ(q);
+  if(!nq) return true;
+  return targets.some(t => normalizeQ(t).includes(nq));
+}
+
 
 function nav(id, btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
@@ -919,13 +937,9 @@ function renderDash(){
 
 // ── Members ────────────────────────────────────────────────────
 function renderMembers(){
-  const q = (document.getElementById('member-search')?.value || '').toLowerCase().trim();
+  const q = (document.getElementById('member-search')?.value || '').trim();
   let list = mFilter==='all' ? MEMBERS : MEMBERS.filter(m=>m.rank===mFilter);
-  if(q) list = list.filter(m =>
-    m.name.toLowerCase().includes(q) ||
-    m.disc.toLowerCase().includes(q) ||
-    (m.email||'').toLowerCase().includes(q)
-  );
+  if(q) list = list.filter(m => matchQ(q, m.name, m.disc, m.email||''));
   document.getElementById('m-cnt').textContent=list.length+'人';
   const wkMap={};WORKS.forEach(w=>{wkMap[w.mId]=(wkMap[w.mId]||0)+1;});
   document.getElementById('member-list').innerHTML = list.map(m=>{
@@ -1172,19 +1186,14 @@ const FOLDER_MAP = {
 const FOLDER_DEFAULT = {label:'ギャラリー', icon:'🎨', color:'#b88000', th:'wt-a'};
 
 function renderGallery(){
-  const q = (document.getElementById('gallery-search')?.value || '').toLowerCase().trim();
+  const q = (document.getElementById('gallery-search')?.value || '').trim();
   let list = [...WORKS].sort((a,b)=>b.id.localeCompare(a.id));
   if(folderFilter !== 'all') list = list.filter(w => w.folder === folderFilter);
   if(gFilter !== 'all') list = list.filter(w => {
     const m = MEMBERS.find(x=>x.id===w.mId);
     return m && m.rank === gFilter;
   });
-  if(q) list = list.filter(w =>
-    w.title.toLowerCase().includes(q) ||
-    w.disc.toLowerCase().includes(q) ||
-    (w.folder||'').includes(q) ||
-    (w.fb||'').toLowerCase().includes(q)
-  );
+  if(q) list = list.filter(w => matchQ(q, w.title, w.disc, w.folder||'', w.fb||''));
   document.getElementById('g-cnt').textContent = list.length+'件';
   document.getElementById('gallery-list').innerHTML = list.map(w=>{
     const m = MEMBERS.find(x=>x.id===w.mId);
@@ -1230,7 +1239,7 @@ function filterG(f,el){
 function renderPromo(){
   const container = document.getElementById('promo-list');
   const searchEl = document.getElementById('promo-search');
-  const q = searchEl ? searchEl.value.toLowerCase().trim() : '';
+  const q = searchEl ? searchEl.value.trim() : '';
 
   let html = '';
 
@@ -1246,8 +1255,7 @@ function renderPromo(){
 
     // メンバー絞り込み（検索 + ステータスフィルター）
     let members = MEMBERS.filter(m => m.rank === rank);
-    if(q) members = members.filter(m =>
-      m.name.toLowerCase().includes(q) || m.disc.toLowerCase().includes(q));
+    if(q) members = members.filter(m => matchQ(q, m.name, m.disc));
     if(promoFilter !== 'all') {
       members = members.filter(m => {
         const allMet = nr && Object.entries(reqs).every(([k,v])=>m.eval[k]>=v) && conds.every(c=>m.conds&&m.conds[c]);
