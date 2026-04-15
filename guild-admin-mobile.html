@@ -478,6 +478,9 @@ select.finput {
     <!-- Members -->
     <div class="page" id="page-members">
       <div class="sh"><span class="sh-t">メンバー</span><span class="sh-c" id="m-cnt"></span></div>
+      <div style="padding:0 0 10px">
+        <input id="member-search" class="finput" placeholder="名前・Discord名で検索…" oninput="renderMembers()" style="width:100%;background:var(--bg2)">
+      </div>
       <div class="chips" id="member-chips">
         <button class="chip on" onclick="filterM('all',this)">すべて</button>
         <button class="chip" onclick="filterM('bronze',this)">🥉 ブロンズ</button>
@@ -493,6 +496,9 @@ select.finput {
     <!-- Gallery -->
     <div class="page" id="page-gallery">
       <div class="sh"><span class="sh-t">作品</span><span class="sh-c" id="g-cnt"></span></div>
+      <div style="padding:0 0 10px">
+        <input id="gallery-search" class="finput" placeholder="タイトル・Discord名・フォルダで検索…" oninput="renderGallery()" style="width:100%;background:var(--bg2)">
+      </div>
       <!-- フォルダタブ -->
       <div class="chips" id="folder-chips">
         <button class="chip on" onclick="filterFolder('all',this)">すべて</button>
@@ -897,7 +903,13 @@ function renderDash(){
 
 // ── Members ────────────────────────────────────────────────────
 function renderMembers(){
-  const list = mFilter==='all'?MEMBERS:MEMBERS.filter(m=>m.rank===mFilter);
+  const q = (document.getElementById('member-search')?.value || '').toLowerCase().trim();
+  let list = mFilter==='all' ? MEMBERS : MEMBERS.filter(m=>m.rank===mFilter);
+  if(q) list = list.filter(m =>
+    m.name.toLowerCase().includes(q) ||
+    m.disc.toLowerCase().includes(q) ||
+    (m.email||'').toLowerCase().includes(q)
+  );
   document.getElementById('m-cnt').textContent=list.length+'人';
   const wkMap={};WORKS.forEach(w=>{wkMap[w.mId]=(wkMap[w.mId]||0)+1;});
   document.getElementById('member-list').innerHTML = list.map(m=>{
@@ -1144,12 +1156,19 @@ const FOLDER_MAP = {
 const FOLDER_DEFAULT = {label:'ギャラリー', icon:'🎨', color:'#b88000', th:'wt-a'};
 
 function renderGallery(){
+  const q = (document.getElementById('gallery-search')?.value || '').toLowerCase().trim();
   let list = [...WORKS].sort((a,b)=>b.id.localeCompare(a.id));
   if(folderFilter !== 'all') list = list.filter(w => w.folder === folderFilter);
   if(gFilter !== 'all') list = list.filter(w => {
     const m = MEMBERS.find(x=>x.id===w.mId);
     return m && m.rank === gFilter;
   });
+  if(q) list = list.filter(w =>
+    w.title.toLowerCase().includes(q) ||
+    w.disc.toLowerCase().includes(q) ||
+    (w.folder||'').includes(q) ||
+    (w.fb||'').toLowerCase().includes(q)
+  );
   document.getElementById('g-cnt').textContent = list.length+'件';
   document.getElementById('gallery-list').innerHTML = list.map(w=>{
     const m = MEMBERS.find(x=>x.id===w.mId);
