@@ -358,6 +358,13 @@ body {
 }
 .finput:focus { border-color: var(--ink3); background: var(--white); }
 textarea.finput { resize: none; min-height: 80px; }
+.search-input {
+  width: 100%; background: var(--bg2); border: 1px solid var(--rule2);
+  border-radius: 10px; padding: 10px 14px; font: 15px var(--sans);
+  color: var(--ink); outline: none; box-sizing: border-box;
+  -webkit-appearance: none; appearance: none;
+}
+.search-input:focus { border-color: var(--ink3); }
 select.finput {
   -webkit-appearance: none; cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a8780' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
@@ -479,7 +486,10 @@ select.finput {
     <div class="page" id="page-members">
       <div class="sh"><span class="sh-t">メンバー</span><span class="sh-c" id="m-cnt"></span></div>
       <div style="padding:0 0 10px">
-        <input id="member-search" class="finput" placeholder="名前・Discord名で検索…" oninput="renderMembers()" style="width:100%;background:var(--bg2)">
+        <input id="member-search" class="search-input" placeholder="名前・Discord名で検索…"
+          oninput="renderMembers()"
+          onkeyup="renderMembers()"
+          style="width:100%">
       </div>
       <div class="chips" id="member-chips">
         <button class="chip on" onclick="filterM('all',this)">すべて</button>
@@ -497,7 +507,10 @@ select.finput {
     <div class="page" id="page-gallery">
       <div class="sh"><span class="sh-t">作品</span><span class="sh-c" id="g-cnt"></span></div>
       <div style="padding:0 0 10px">
-        <input id="gallery-search" class="finput" placeholder="タイトル・Discord名・フォルダで検索…" oninput="renderGallery()" style="width:100%;background:var(--bg2)">
+        <input id="gallery-search" class="search-input" placeholder="タイトル・Discord名・フォルダで検索…"
+          oninput="renderGallery()"
+          onkeyup="renderGallery()"
+          style="width:100%">
       </div>
       <!-- フォルダタブ -->
       <div class="chips" id="folder-chips">
@@ -525,7 +538,10 @@ select.finput {
       <div class="sh"><span class="sh-t">昇格審査</span></div>
       <!-- 検索 -->
       <div class="field" style="margin-bottom:10px">
-        <input class="finput" id="promo-search" placeholder="名前・Discord名で検索…" oninput="renderPromo()">
+        <input class="search-input" id="promo-search" placeholder="名前・Discord名で検索…"
+          oninput="renderPromo()"
+          onkeyup="renderPromo()"
+          style="width:100%">
       </div>
       <!-- ステータスフィルター -->
       <div class="chips" id="promo-chips" style="margin-bottom:6px">
