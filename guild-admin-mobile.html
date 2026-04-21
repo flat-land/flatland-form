@@ -767,18 +767,18 @@ const EVAL_AXES = [
 ];
 
 const RANK_NEXT_REQS = {
-  silver:  {skill:2,growth:2,contin:2},
-  gold:    {skill:3,growth:3,contin:3},
-  plat:    {skill:3,growth:3,contrib:3,contin:4},
-  diamond: {skill:4,growth:4,contrib:4,contin:4},
+  silver:  {},
+  gold:    {skill:2,growth:2,contin:2},
+  plat:    {skill:3,growth:3,contin:3},
+  diamond: {skill:3,growth:3,contrib:3,contin:4},
   master:  {skill:4,growth:4,contrib:4,contin:4},
 };
 const RANK_NEXT_CONDS = {
-  silver:  ['トレーニング完了','作品1つ以上投稿'],
-  gold:    ['クエスト参加','WIP投稿あり'],
-  plat:    ['レイド参加'],
-  diamond: ['デモリール完成','他メンバーへの貢献'],
-  master:  ['全条件達成'],
+  silver:  ['発言 or リアクション','参加意思の表明'],
+  gold:    ['トレーニングの完了','作品1つ以上投稿'],
+  plat:    ['クエスト参加','WIP投稿あり'],
+  diamond: ['上級クエストの提出'],
+  master:  ['デモリールの完成','他メンバーへの貢献あり'],
 };
 
 let MEMBERS = [];
