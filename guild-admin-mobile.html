@@ -77,6 +77,7 @@ body {
   display: flex; align-items: center; justify-content: center; color: var(--ink3);
 }
 .header-add-btn {
+  margin-left: auto;
   width: 36px; height: 36px; border-radius: 9px;
   background: var(--ink); border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center; color: white;
@@ -462,11 +463,10 @@ select.finput {
 
     <!-- Dashboard -->
     <div class="page on" id="page-dashboard">
-      <div class="sh"><span class="sh-t">概要</span></div>
       <div class="dash-stats">
-        <div class="stat stat-blue"><div class="stat-lbl">メンバー</div><div class="stat-val" id="ds-members">6</div><div class="stat-sub">アクティブ</div></div>
-        <div class="stat stat-gold"><div class="stat-lbl">作品</div><div class="stat-val" id="ds-works">9</div><div class="stat-sub">総作品数</div></div>
-        <div class="stat stat-teal"><div class="stat-lbl">申請</div><div class="stat-val" id="ds-apps">2</div><div class="stat-sub">審査待ち</div></div>
+        <div class="stat stat-blue" onclick="nav('members',document.getElementById('nav-members'));filterM('all',document.querySelector('#member-chips .chip'))" style="cursor:pointer"><div class="stat-lbl">メンバー</div><div class="stat-val" id="ds-members">6</div><div class="stat-sub">アクティブ</div></div>
+        <div class="stat stat-gold" onclick="nav('gallery',document.getElementById('nav-gallery'))" style="cursor:pointer"><div class="stat-lbl">作品</div><div class="stat-val" id="ds-works">9</div><div class="stat-sub">総作品数</div></div>
+        <div class="stat stat-teal" onclick="nav('applications',document.getElementById('nav-applications'))" style="cursor:pointer"><div class="stat-lbl">申請</div><div class="stat-val" id="ds-apps">2</div><div class="stat-sub">審査待ち</div></div>
       </div>
       <div class="dash-rank-row" id="dash-rank-row"></div>
       <div class="sh"><span class="sh-t">📊 今週の活動</span></div>
@@ -917,7 +917,7 @@ function renderDash(){
 
   document.getElementById('dash-rank-row').innerHTML = RANK_ORDER.map(r=>{
     const R=RANKS[r]; const cnt=MEMBERS.filter(m=>m.rank===r).length;
-    return `<div class="rank-tile" style="border-top:3px solid ${R.color}">
+    return `<div class="rank-tile" onclick="jumpToRank('${r}')" style="border-top:3px solid ${R.color};cursor:pointer">
       <div class="rank-tile-icon">${R.icon}</div>
       <div class="rank-tile-label" style="color:${R.color}">${R.label}</div>
       <div class="rank-tile-count" style="color:${R.color}">${cnt}</div>
@@ -947,12 +947,24 @@ function renderWeekly(){
     return;
   }
 
-  // 最新の週のデータを取得
+  // 最新の週を特定
   const latestWeek = WEEKLY.reduce((max, w) => {
     return (!max || w.weekStart > max) ? w.weekStart : max;
   }, null);
 
-  const thisWeek = WEEKLY.filter(w => w.weekStart === latestWeek);
+  // 同じuserIdで重複がある場合は統合（複数行の合算）
+  const merged = {};
+  WEEKLY.filter(w => w.weekStart === latestWeek).forEach(w => {
+    const id = String(w.userId);
+    if (!merged[id]) {
+      merged[id] = { ...w };
+    } else {
+      merged[id].totalMessages    += (w.totalMessages || 0);
+      merged[id].totalAttachments += (w.totalAttachments || 0);
+    }
+  });
+  const thisWeek = Object.values(merged);
+
   const active = thisWeek.filter(w => (w.totalMessages || 0) > 0)
     .sort((a,b) => (b.totalMessages||0) - (a.totalMessages||0));
   const totalMsg = active.reduce((s,w) => s + (w.totalMessages||0), 0);
@@ -970,28 +982,88 @@ function renderWeekly(){
   const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
   const range = `${fmt(ws)}〜${fmt(we)}`;
 
-  const rankItems = active.slice(0,5).map((w,i)=>{
+  // Discord名→メンバーIDマップ（クリックで詳細画面へ）
+  const discToMember = {};
+  MEMBERS.forEach(m => {
+    if (m.disc) discToMember[String(m.disc)] = m.id;
+  });
+
+  // ランキング（初期は5位まで、展開で全件）
+  const renderRankItem = (w, i) => {
     const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
-    return `<div class="ri">
+    const mId = discToMember[String(w.userId)];
+    const clickable = mId ? `onclick="openMemberSheet('${mId}')" style="cursor:pointer"` : '';
+    return `<div class="ri" ${clickable}>
       <div class="ri-info">
         <div class="ri-title">${medal} ${w.username}</div>
         <div class="ri-sub">メッセージ ${w.totalMessages||0}件 · 添付 ${w.totalAttachments||0}件</div>
       </div>
     </div>`;
-  }).join('');
+  };
+
+  const top5 = active.slice(0, 5).map(renderRankItem).join('');
+  const rest = active.slice(5).map(renderRankItem).join('');
 
   el.innerHTML = `
     <div style="padding:12px 14px;background:var(--bg2);border-radius:10px;margin-bottom:10px;font-size:13px;color:var(--ink2)">
       <span style="color:var(--ink3)">${range}</span> · アクティブ <b style="color:var(--ink1)">${active.length}人</b> · メッセージ <b style="color:var(--ink1)">${totalMsg}</b>件 · 添付 <b style="color:var(--ink1)">${totalAtt}</b>件
     </div>
-    <div class="recent-list">${rankItems || '<div style="padding:12px;color:var(--ink3);font-size:13px;text-align:center">アクティブなメンバーがいません</div>'}</div>
+    <div class="recent-list" id="dash-weekly-top5">${top5 || '<div style="padding:12px;color:var(--ink3);font-size:13px;text-align:center">アクティブなメンバーがいません</div>'}</div>
+    <div class="recent-list" id="dash-weekly-rest" style="display:none">${rest}</div>
+    ${active.length > 5 ? `
+      <button id="dash-weekly-toggle" onclick="toggleWeeklyRanking(this)"
+        style="width:100%;margin-top:8px;padding:10px;border-radius:9px;background:var(--bg2);border:1px solid var(--rule2);color:var(--ink2);font:13px var(--sans);cursor:pointer">
+        ▼ 残り ${active.length - 5} 人を表示
+      </button>
+    ` : ''}
     ${inactive.length > 0 ? `
       <div style="margin-top:12px;padding:12px 14px;background:var(--bg2);border-radius:10px;font-size:13px;color:var(--ink2)">
-        <div style="color:var(--ink3);margin-bottom:6px">😴 非アクティブ（${inactive.length}人）</div>
-        <div style="color:var(--ink1)">${inactive.map(m => m.name).join('、')}</div>
+        <div onclick="toggleWeeklyInactive(this)" style="color:var(--ink3);display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none">
+          <span>😴 非アクティブ（${inactive.length}人）</span>
+          <span id="dash-weekly-inactive-arrow" style="font-size:11px">▼</span>
+        </div>
+        <div id="dash-weekly-inactive-list" style="display:none;margin-top:8px;color:var(--ink1);line-height:1.9">
+          ${inactive.map(m => `<span onclick="openMemberSheet('${m.id}')" style="display:inline-block;padding:3px 10px;margin:2px 3px;background:var(--bg);border:1px solid var(--rule2);border-radius:12px;font-size:12px;cursor:pointer">${m.name}</span>`).join('')}
+        </div>
       </div>
     ` : ''}
   `;
+}
+
+// ── 週次ランキングの折り畳み ───────────────────────────────────
+function toggleWeeklyRanking(btn){
+  const rest = document.getElementById('dash-weekly-rest');
+  const expanded = rest.style.display !== 'none';
+  rest.style.display = expanded ? 'none' : '';
+  const hidden = btn.textContent.match(/\d+/);
+  btn.textContent = expanded
+    ? `▼ 残り ${hidden ? hidden[0] : ''} 人を表示`
+    : `▲ 折りたたむ`;
+}
+function toggleWeeklyInactive(row){
+  const list = document.getElementById('dash-weekly-inactive-list');
+  const arrow = document.getElementById('dash-weekly-inactive-arrow');
+  const expanded = list.style.display !== 'none';
+  list.style.display = expanded ? 'none' : '';
+  arrow.textContent = expanded ? '▼' : '▲';
+}
+
+// ── ランクタイル → メンバーページ（そのランクで絞り込み） ────
+function jumpToRank(rank){
+  nav('members', document.getElementById('nav-members'));
+  // ランクチップを探して選択状態に
+  const chips = document.querySelectorAll('#member-chips .chip');
+  const rankLabels = {all:'すべて', bronze:'ブロンズ', silver:'シルバー', gold:'ゴールド', plat:'プラチナ', diamond:'ダイヤモンド', master:'マスター'};
+  const label = rankLabels[rank];
+  chips.forEach(c => {
+    if (c.textContent.includes(label)) {
+      filterM(rank, c);
+    }
+  });
+  // 検索欄もクリア
+  const s = document.getElementById('member-search');
+  if (s) s.value = '';
+  renderMembers();
 }
 
 // ── Members ────────────────────────────────────────────────────
