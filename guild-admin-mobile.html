@@ -887,6 +887,24 @@ function matchQ(q, ...targets) {
   return keywords.every(kw => normTargets.some(t => t.includes(kw)));
 }
 
+// ── 50音順ソート用ヘルパー ────────────────────────────────────
+function sortKey(str) {
+  if (!str) return '';
+  // カタカナ→ひらがな、全角英数→半角、大文字→小文字
+  return String(str)
+    .toLowerCase()
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
+    .replace(/[\u30A1-\u30F6]/g, s => String.fromCharCode(s.charCodeAt(0) - 0x60))
+    .replace(/[\s\u3000]+/g, '');
+}
+function sortByName(arr, getName) {
+  return [...arr].sort((a, b) => {
+    const ka = sortKey(getName(a));
+    const kb = sortKey(getName(b));
+    return ka.localeCompare(kb, 'ja');
+  });
+}
+
 
 function nav(id, btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
@@ -982,9 +1000,10 @@ function renderWeekly(){
     });
   });
 
-  // 非アクティブメンバー
-  const inactive = MEMBERS.filter(m =>
-    m.status === 'アクティブ' && !activeMemberIds.has(m.id)
+  // 非アクティブメンバー（50音順）
+  const inactive = sortByName(
+    MEMBERS.filter(m => m.status === 'アクティブ' && !activeMemberIds.has(m.id)),
+    m => m.name
   );
 
   // 週の期間を整形
@@ -1091,6 +1110,7 @@ function renderMembers(){
       return blob.includes(nq);
     });
   }
+  list = sortByName(list, m => m.name);
   document.getElementById('m-cnt').textContent=list.length+'人';
   const wkMap={};WORKS.forEach(w=>{wkMap[w.mId]=(wkMap[w.mId]||0)+1;});
   document.getElementById('member-list').innerHTML = list.map(m=>{
@@ -1391,13 +1411,18 @@ const FOLDER_DEFAULT = {label:'ギャラリー', icon:'🎨', color:'#b88000', t
 
 function renderGallery(){
   const q = (document.getElementById('gallery-search')?.value || '').trim();
-  let list = [...WORKS].sort((a,b)=>b.id.localeCompare(a.id));
+  let list = [...WORKS];
   if(folderFilter !== 'all') list = list.filter(w => w.folder === folderFilter);
   if(gFilter !== 'all') list = list.filter(w => {
     const m = MEMBERS.find(x=>x.id===w.mId);
     return m && m.rank === gFilter;
   });
   if(q) list = list.filter(w => matchQ(q, w.title, w.disc, w.folder||'', w.fb||''));
+  // 作品者の名前順（50音）
+  list = sortByName(list, w => {
+    const m = MEMBERS.find(x => x.id === w.mId);
+    return m ? m.name : (w.disc || w.title || '');
+  });
   document.getElementById('g-cnt').textContent = list.length+'件';
   document.getElementById('gallery-list').innerHTML = list.map(w=>{
     const m = MEMBERS.find(x=>x.id===w.mId);
@@ -1468,6 +1493,7 @@ function renderPromo(){
         return true;
       });
     }
+    members = sortByName(members, m => m.name);
     if (!members.length) return;
 
     // セクションヘッダー
