@@ -469,7 +469,7 @@ select.finput {
         <div class="stat stat-teal" onclick="nav('applications',document.getElementById('nav-applications'))" style="cursor:pointer"><div class="stat-lbl">申請</div><div class="stat-val" id="ds-apps">2</div><div class="stat-sub">審査待ち</div></div>
       </div>
       <div class="dash-rank-row" id="dash-rank-row"></div>
-      <div class="sh"><span class="sh-t">📊 今週の活動</span></div>
+      <div class="sh"><span class="sh-t">今週の活動</span></div>
       <div id="dash-weekly"></div>
       <div class="sh"><span class="sh-t">最近の作品</span></div>
       <div class="recent-list" id="dash-recent"></div>
@@ -504,14 +504,6 @@ select.finput {
           oninput="renderGallery()"
           onkeyup="renderGallery()"
           style="width:100%">
-      </div>
-      <!-- フォルダタブ -->
-      <div class="chips" id="folder-chips">
-        <button class="chip on" onclick="filterFolder('all',this)">すべて</button>
-        <button class="chip" onclick="filterFolder('トレーニング',this)">📚</button>
-        <button class="chip" onclick="filterFolder('クエスト',this)">⚔️</button>
-        <button class="chip" onclick="filterFolder('レイド',this)">🛡</button>
-        <button class="chip" onclick="filterFolder('ギャラリー',this)">🎨</button>
       </div>
       <!-- ランクフィルター -->
       <div class="chips" id="gallery-chips" style="margin-top:-4px">
@@ -970,10 +962,29 @@ function renderWeekly(){
   const totalMsg = active.reduce((s,w) => s + (w.totalMessages||0), 0);
   const totalAtt = active.reduce((s,w) => s + (w.totalAttachments||0), 0);
 
-  // 非アクティブメンバー（メンバーシートと照合）
-  const activeIds = new Set(active.map(w => String(w.userId)));
+  // Discord名（disc）→メンバーIDマップ
+  const discToMember = {};
+  MEMBERS.forEach(m => {
+    if (m.disc) discToMember[String(m.disc).toLowerCase()] = m.id;
+  });
+
+  // アクティブなメンバーのID集合（username照合）
+  const activeNames = new Set(active.map(w => String(w.username || '').toLowerCase()));
+  const activeMemberIds = new Set();
+  active.forEach(w => {
+    // usernameからメンバーIDを特定
+    const uname = String(w.username || '').toLowerCase();
+    if (discToMember[uname]) activeMemberIds.add(discToMember[uname]);
+    // 名前一致も試す（username ≠ disc の場合もあるため）
+    MEMBERS.forEach(m => {
+      if (m.name && w.username && m.name.includes(w.username)) activeMemberIds.add(m.id);
+      if (m.name && w.username && w.username.includes(m.name)) activeMemberIds.add(m.id);
+    });
+  });
+
+  // 非アクティブメンバー
   const inactive = MEMBERS.filter(m =>
-    m.status === 'アクティブ' && !activeIds.has(String(m.disc))
+    m.status === 'アクティブ' && !activeMemberIds.has(m.id)
   );
 
   // 週の期間を整形
@@ -982,17 +993,19 @@ function renderWeekly(){
   const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
   const range = `${fmt(ws)}〜${fmt(we)}`;
 
-  // Discord名→メンバーIDマップ（クリックで詳細画面へ）
-  const discToMember = {};
-  MEMBERS.forEach(m => {
-    if (m.disc) discToMember[String(m.disc)] = m.id;
-  });
-
   // ランキング（初期は5位まで、展開で全件）
   const renderRankItem = (w, i) => {
     const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
-    const mId = discToMember[String(w.userId)];
-    const clickable = mId ? `onclick="openMemberSheet('${mId}')" style="cursor:pointer"` : '';
+    // メンバーIDを特定（username → disc の両方で試す）
+    const uname = String(w.username || '').toLowerCase();
+    let mId = discToMember[uname];
+    if (!mId) {
+      const matched = MEMBERS.find(m =>
+        (m.name && w.username && (m.name.includes(w.username) || w.username.includes(m.name)))
+      );
+      if (matched) mId = matched.id;
+    }
+    const clickable = mId ? `onclick="openEvalSheet('${mId}')" style="cursor:pointer"` : '';
     return `<div class="ri" ${clickable}>
       <div class="ri-info">
         <div class="ri-title">${medal} ${w.username}</div>
@@ -1012,6 +1025,7 @@ function renderWeekly(){
     <div class="recent-list" id="dash-weekly-rest" style="display:none">${rest}</div>
     ${active.length > 5 ? `
       <button id="dash-weekly-toggle" onclick="toggleWeeklyRanking(this)"
+        data-count="${active.length - 5}"
         style="width:100%;margin-top:8px;padding:10px;border-radius:9px;background:var(--bg2);border:1px solid var(--rule2);color:var(--ink2);font:13px var(--sans);cursor:pointer">
         ▼ 残り ${active.length - 5} 人を表示
       </button>
@@ -1019,11 +1033,11 @@ function renderWeekly(){
     ${inactive.length > 0 ? `
       <div style="margin-top:12px;padding:12px 14px;background:var(--bg2);border-radius:10px;font-size:13px;color:var(--ink2)">
         <div onclick="toggleWeeklyInactive(this)" style="color:var(--ink3);display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none">
-          <span>😴 非アクティブ（${inactive.length}人）</span>
+          <span>非アクティブ（${inactive.length}人）</span>
           <span id="dash-weekly-inactive-arrow" style="font-size:11px">▼</span>
         </div>
         <div id="dash-weekly-inactive-list" style="display:none;margin-top:8px;color:var(--ink1);line-height:1.9">
-          ${inactive.map(m => `<span onclick="openMemberSheet('${m.id}')" style="display:inline-block;padding:3px 10px;margin:2px 3px;background:var(--bg);border:1px solid var(--rule2);border-radius:12px;font-size:12px;cursor:pointer">${m.name}</span>`).join('')}
+          ${inactive.map(m => `<span onclick="openEvalSheet('${m.id}')" style="display:inline-block;padding:3px 10px;margin:2px 3px;background:var(--bg);border:1px solid var(--rule2);border-radius:12px;font-size:12px;cursor:pointer">${m.name}</span>`).join('')}
         </div>
       </div>
     ` : ''}
@@ -1035,9 +1049,9 @@ function toggleWeeklyRanking(btn){
   const rest = document.getElementById('dash-weekly-rest');
   const expanded = rest.style.display !== 'none';
   rest.style.display = expanded ? 'none' : '';
-  const hidden = btn.textContent.match(/\d+/);
+  const count = btn.getAttribute('data-count');
   btn.textContent = expanded
-    ? `▼ 残り ${hidden ? hidden[0] : ''} 人を表示`
+    ? `▼ 残り ${count} 人を表示`
     : `▲ 折りたたむ`;
 }
 function toggleWeeklyInactive(row){
@@ -1386,14 +1400,12 @@ function renderGallery(){
     return `<div class="wcard" onclick="window.open('${w.url}')">
       <div class="wthumb ${F.th}" style="position:relative">
         <span style="font-size:36px">${w.icon||F.icon}</span>
-        <span class="wcat" style="background:${F.color}18;color:${F.color};border:1px solid ${F.color}40">${F.icon} ${F.label}</span>
         ${R?`<span style="position:absolute;top:8px;right:8px;font-size:15px">${R.icon}</span>`:''}
       </div>
       <div class="wbody">
         <div class="wtitle">${w.title}</div>
         <div class="wmeta">
           <span>${w.disc}</span>
-          ${w.folder==='レイド'&&w.members?`<span style="color:var(--master);font-size:10.5px;margin-left:4px">👥 ${w.members}</span>`:''}
           <span style="margin-left:auto;color:var(--ink4)">${String(w.date).slice(0,10)}</span>
         </div>
         ${w.fb?`<div class="wfb">${w.fb}</div>`:''}
